@@ -21,15 +21,16 @@ class App extends Component {
       
       this.itemManager = new this.web3.eth.Contract(
         ItemManagerContract.abi,
-        ItemManagerContract.networks[this.networkId] && this.deployedNetwork.address,
+        ItemManagerContract.networks[this.networkId] && ItemManagerContract.networks[this.networkId].address,
       );
       this.item = new this.web3.eth.Contract(
         ItemContract.abi,
-        ItemContract.networks[this.networkId] && this.deployedNetwork.address,
+        ItemContract.networks[this.networkId] && ItemManagerContract.networks[this.networkId].address,
       );
 
       // Set web3, accounts, and contract to the state, and then proceed with an
       // example of interacting with the contract's methods.
+      this.listenToPaymentEvent();
       this.setState({ loaded: true });
     } catch (error) {
       // Catch any errors for any of the above operations.
@@ -39,6 +40,16 @@ class App extends Component {
       console.error(error);
     }
   }; 
+  
+  listenToPaymentEvent = () => {
+    let self = this;
+    this.itemManager.events.supplyChainStep().on("data", async function(event){
+      console.log(event);
+      let itemObj = await self.itemManager.methods.items(event.returnValues._itemIndex).call();
+      console.log(itemObj);
+      alert("Item "+itemObj._identifier+" was paid ,deliver it now!");
+    });
+  }
 
   handleInputChange = (event)=>{
     const target = event.target;
@@ -51,7 +62,9 @@ class App extends Component {
 
   handleSubmit = async()=>{
     const {price,itemName} = this.state;
-    await this.itemManager.methods.createItem(itemName,price).send({from: this.accounts[0]});
+    let result = await this.itemManager.methods.createItem(itemName,price).send({from: this.accounts[0]});
+    //console.log(result);
+    alert("Send "+price+" Wei to "+result.events.supplyChainStep.returnValues._itemAddress);
   }
 
   render() {
